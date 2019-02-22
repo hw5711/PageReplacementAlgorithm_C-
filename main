@@ -1,0 +1,310 @@
+#include <iostream>
+#include <list>
+#include <ctime>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <deque>
+
+using namespace std;
+
+const int totalPage = 100;
+
+int FIFO( deque <string>, int);
+int LRU( deque <string>, int);
+int OPT( deque <string>, int);
+bool isExists(list <string> , string);//FIFO
+bool isExists(vector <string> , string);//LRU,OPT
+bool isAppearOnce(vector <string> &, string, int,int);//lRU
+bool isAppearOnce(deque <string> &, string, int);//OPT
+
+int main(int argc, char* argv[])
+{
+   if(argc==2)
+    {
+    int pageFrame =atoi(argv[1]);
+    deque <string> myList; //store the randomly generated pages
+    string genaratedPage;
+    int pageFaultNumFIFO;
+    int pageFaultNumLRU;
+    int pageFaultNumOPT;
+
+    srand((int)time(0));
+    for(int i=0; i<totalPage; i++)
+    {
+        int u;
+        u = rand()%49;
+        genaratedPage = to_string(u);
+        myList.push_back(genaratedPage);
+        //for test
+       //cout << "page" << i << " is "<< genaratedPage << endl;
+    }
+
+    pageFaultNumFIFO=FIFO(myList, pageFrame);
+    cout<<"\nFIFO page fault num is "<< pageFaultNumFIFO << endl;
+
+    pageFaultNumLRU=LRU(myList, pageFrame);
+    cout<<"\nLRU page fault num is "<< pageFaultNumLRU << endl;
+
+    pageFaultNumOPT=OPT(myList, pageFrame);
+    cout<<"\nOPT page fault num is "<< pageFaultNumOPT << endl;
+    }
+
+    return 0;
+}
+
+int FIFO(deque <string> myList, int pageFrame)
+{
+    int countPageFaults = 0;
+    list <string> pageFrameList;
+    list<string>::iterator iter;
+
+    while(myList.size()!=0)
+    {
+        if(pageFrameList.size()<pageFrame)
+        {
+            if(isExists(pageFrameList,myList.front())==false)
+            {
+                pageFrameList.push_back(myList.front());
+                myList.pop_front();
+                countPageFaults++;
+            }
+            else
+            {
+                myList.pop_front();
+            }
+        }
+        else if(pageFrameList.size()==pageFrame)
+        {
+            bool inPageFrame = false;
+            for(iter=pageFrameList.begin(); iter!=pageFrameList.end(); iter++)
+            {
+                if(myList.front()==*iter)
+                    inPageFrame=true;
+            }
+
+            if(inPageFrame==true)
+            {
+                myList.pop_front();
+            }
+            else
+            {
+                pageFrameList.pop_front();
+                pageFrameList.push_back(myList.front());
+                myList.pop_front();
+                countPageFaults++;
+            }
+        }
+    }
+    pageFrameList.clear();
+    return countPageFaults;
+}
+
+int LRU(deque <string> myList, int pageFrame)
+{
+    int countPageFaults = 0;
+    vector<string> pageFrameList;
+    vector <string> popedMyList;
+    vector<string>::iterator iter;
+    int tempNum;
+
+    while(myList.size()!=0)
+    {
+        if(pageFrameList.size()<pageFrame)
+        {
+            if(isExists(pageFrameList,myList.front())==false)
+            {
+                pageFrameList.push_back(myList.front());
+                popedMyList.push_back(myList.front());
+                myList.pop_front();
+                countPageFaults++;
+            }
+            else
+            {
+                popedMyList.push_back(myList.front());
+                myList.pop_front();
+            }
+        }
+        else if (pageFrameList.size()==pageFrame)
+        {
+            if(isExists(pageFrameList,myList.front()))
+            {
+                popedMyList.push_back(myList.front());
+                myList.pop_front();
+            }
+            else //find the best one suit LRU
+            {
+                int i=(totalPage-myList.size()-1);
+                string changePage;
+                tempNum=pageFrame;
+                while(tempNum>0&&i>=0)
+                {
+                    for(i=totalPage-myList.size()-1; i>=0; i--)
+                    {
+                        if(isExists(pageFrameList, popedMyList[i]))
+                        {
+                            int num1 = totalPage-myList.size()-1;
+                            if(isAppearOnce(popedMyList, popedMyList[i], num1, i))
+                            {
+                                tempNum--;
+                                changePage=popedMyList[i];
+                            }
+                            else
+                                {
+                                    continue;
+                                }
+                        }
+                        else
+                        {
+                             continue;
+                        }
+                    }
+                }
+                //exchange the pageFrame
+                for(iter=pageFrameList.begin(); iter!=pageFrameList.end(); iter++)
+                {
+                    if(changePage==*iter)
+                    {
+                        pageFrameList.erase(iter);
+                        pageFrameList.insert(iter,myList.front());
+
+                    }
+                }
+                popedMyList.push_back(myList.front());
+                myList.pop_front();
+                countPageFaults++;
+            }
+        }
+    }
+    pageFrameList.clear();
+    popedMyList.clear();
+    return countPageFaults;
+}
+
+int OPT( deque <string> myList, int pageFrame)
+{
+    int countPageFaults = 0;
+    vector <string> pageFrameList;
+    vector<string>::iterator iter;
+    deque<string>::iterator iter1;
+    int tempNum;
+
+    while(myList.size()!=0)
+    {
+        if(pageFrameList.size()<pageFrame)
+        {
+            if(isExists(pageFrameList, myList.front())==false)
+            {
+                string temp;
+                temp=myList.front();
+                pageFrameList.push_back(temp);
+                myList.pop_front();
+                countPageFaults++;
+            }
+            else
+            {
+                myList.pop_front();
+            }
+        }
+        else
+        {
+            string changePage;
+            if(isExists(pageFrameList, myList.front())==true)
+            {
+                myList.pop_front();
+            }
+            else  //find the best one suit OPT
+            {
+                string changePage;
+                tempNum=pageFrame;
+                bool uselessPage = true;
+
+                while(tempNum>0&&uselessPage==true)
+                {
+                    for(iter1=myList.begin(); iter1!=myList.end(); iter1++)
+                    {
+                        if(isExists(pageFrameList, *iter1))
+                        {
+                            int num = myList.size();
+                            if(isAppearOnce(myList,*iter1, num))
+                            {
+
+                                tempNum--;
+                                changePage=*iter1;
+                            }
+                        }
+                        else
+                        {
+                            changePage=*iter1;
+                            uselessPage = false;
+                            break;
+                        }
+                    }
+                }
+              //exchange the pageFrame
+                for(iter=pageFrameList.begin(); iter!=pageFrameList.end(); iter++)
+                {
+                    if(changePage==*iter)
+                        {pageFrameList.insert(iter,myList.front());
+                        pageFrameList.erase(iter);
+                        }
+                }
+                myList.pop_front();
+                countPageFaults++;
+            }
+        }
+    }
+    pageFrameList.clear();
+    return countPageFaults;
+}
+
+bool isExists(list <string> tempList, string iter1)
+{
+    list<string>::iterator iter;
+    for(iter=tempList.begin(); iter!=tempList.end(); iter++)
+    {
+        if(*iter==iter1)
+            return true;
+    }
+    return false;
+}
+
+bool isExists(vector <string> tempList, string iter1)//LRU,OPT
+{
+    vector<string>::iterator iter;
+    for(int i=0; i < tempList.size(); i++)
+    {
+        if(tempList.at(i)==iter1)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isAppearOnce(vector <string> &tempList, string iter1, int num, int curNum )//LRU will use this function
+{
+    for(int i=num; i<=curNum; i++)
+    {
+        if(tempList[i]==iter1)
+        {
+            return false;
+        }
+    }
+        return true;
+}
+
+bool isAppearOnce(deque <string> &tempList, string iter1, int num)//OPT will use this function
+{
+    int n=0;
+    for(int i=(num-1); i<totalPage; i++)
+    {
+        if(tempList[i]==iter1)
+        {
+            n++;
+        }
+    }
+    if(n==1)
+        return true;
+    return false;
+}
